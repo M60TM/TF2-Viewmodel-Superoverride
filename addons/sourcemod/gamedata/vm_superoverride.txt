@@ -1,0 +1,36 @@
+"Games"
+{
+	"tf"
+	{
+		"Signatures"
+		{
+			"CTFPlayer::DoAnimationEvent"
+			{
+				"library"	"server"
+				"linux"		"@_ZN9CTFPlayer16DoAnimationEventE17PlayerAnimEvent_ti"
+				"windows"	"\x55\x8B\xEC\x51\x53\x56\x8B\x35\x2A\x2A\x2A\x2A\x8B\xD9\x8B\xCE"
+			}
+		}
+		"Functions"
+		{
+			"CTFPlayer::DoAnimationEvent"
+			{
+				"signature"	"CTFPlayer::DoAnimationEvent"
+				"callconv"	"thiscall"
+				"return"	"void"
+				"this"		"entity"
+				"arguments"
+				{
+					"event"
+					{
+						"type"	"int"
+					}
+					"nData"
+					{
+						"type"	"int"
+					}
+				}
+			}
+		}
+	}
+}
