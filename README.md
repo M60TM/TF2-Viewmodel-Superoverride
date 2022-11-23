@@ -11,24 +11,26 @@ A list of custom attributes make for v_model support
 
 # How to Use
 
-## Viewmodel Superoverride:
-
-### Example:
+## Example:
 
 - `"viewmodel superoverride"    "models/weapons/v_models/v_example.mdl"`
 
 - `"armmodel superoverride"    "none"`
 
+- `"viewmodel superoverride skin"   "2"`
+
 - `"armmodel attachment"    "weapon_bone"`
 
 - `"vm superoverride anim"	"prifire=fire prifirePR=1.4 reload=reload"`
 
-### Arguments:
+## Arguments:
 
-- "viewmodel superoverride": Attribute value is a full path to a model file, if you wanna worldmodel override, use [TFCWXBaseAttribute](https://github.com/nosoop/SM-TFCWXBaseAttributes).
+- `"viewmodel superoverride"`: Attribute value is a full path to a model file, if you wanna worldmodel override, use [TFCWXBaseAttribute](https://github.com/nosoop/SM-TFCWXBaseAttributes).
 
-- "armmodel superoverride": Attribute value is a full path to a model file, default class's armmodel is already precached. If you don't set it, plugin find player's current class and automatically attach arm to weapon. And you can use `none` value to prevent arm attach(ex. quake rocketlauncher)
+- `"armmodel superoverride"`: Attribute value is a full path to a model file, default armmodels are already precached. If you don't set it, plugin find player's current class and automatically attach arm to weapon. And you can use `none` value to prevent arm attach(ex. quake rocketlauncher).
 
-- "armmodel attachment": Attribute value is a attachment name. Even if "armmodel superoverride" is not set, it must be set unconditionally.
+- `"viewmodel superoverride skin"`: Attribute value is a any number. Use it when you need to set specific skin.
 
-- "vm superoverride anim": Available attribute value is `draw`, `idle`, `prifire`(primary fire), `altfire`(alt fire), `attackgre`(special fire), `reload`(reload or reload start), `reloadloop`, `reloadend`. And you can set their playbackrate by setting like `prifirePR=1.4`(default value is 1.0).
+- `"armmodel attachment"`: Attribute value is a attachment name. Even if "armmodel superoverride" is not set, it must be set unconditionally.
+
+- `"vm superoverride anim"`: Available attribute value is `draw`, `idle`, `fire`(primary fire), `altfire`(alt fire), `specialfire`(special fire), `reloadbutton`(R), `reload`(reload or reload start), `reloadloop`, `reloadend`. And you can set their playbackrate by setting like `prifirePR=1.4`(default value is 1.0).
