@@ -13,17 +13,17 @@ A list of custom attributes make for v_model support
 
 ## Viewmodel Superoverride:
 
-* Example:
+### Example:
 
- `"viewmodel superoverride"    "models/weapons/v_models/v_example.mdl"`
+- `"viewmodel superoverride"    "models/weapons/v_models/v_example.mdl"`
 
- `"armmodel superoverride"    "none"`
+- `"armmodel superoverride"    "none"`
 
- `"armmodel attachment"    "weapon_bone"`
+- `"armmodel attachment"    "weapon_bone"`
 
- `"vm superoverride anim"	"prifire=fire prifirePR=1.4 reload=reload"`
+- `"vm superoverride anim"	"prifire=fire prifirePR=1.4 reload=reload"`
 
-* Arguments:
+### Arguments:
 
 - "viewmodel superoverride": Attribute value is a full path to a model file, if you wanna worldmodel override, use [TFCWXBaseAttribute](https://github.com/nosoop/SM-TFCWXBaseAttributes).
 
