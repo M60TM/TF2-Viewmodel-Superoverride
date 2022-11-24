@@ -86,7 +86,7 @@ public void OnPluginStart()
 	if (gamedata == null)
 		SetFailState("Could not find vm_superoverride gamedata");
 	DHook_Setup(gamedata);
-	
+
 	delete gamedata;
 }
 
@@ -311,8 +311,6 @@ void ViewModel_Create(int iClient, const char[] sModel, const float vecAnglesOff
 				AcceptEntityInput(iHands, "SetParentAttachment", iViewModel, iViewModel);
 
 				g_iSuperArmModelRef[iClient] = EntIndexToEntRef(iHands);
-
-				SDKHook(iHands, SDKHook_SetTransmit, HandModel_SetTransmit);
 			}	
 		}
 	}
@@ -376,6 +374,8 @@ void OriginalViewModel_Hide(int client)
 	{
 		SetEntProp(client, Prop_Send, "m_bDrawViewmodel", 0);
 	}
+
+	return;
 }
 
 void ViewModel_SetAnimation(int client, const char[] sAnimation)
@@ -385,6 +385,8 @@ void ViewModel_SetAnimation(int client, const char[] sAnimation)
 		SetVariantString(sAnimation);
 		AcceptEntityInput(g_iSuperViewModelRef[client], "SetAnimation");
 	}
+
+	return;
 }
 
 void ViewModel_SetDefaultAnimation(int client, const char[] sAnimation)
@@ -394,6 +396,8 @@ void ViewModel_SetDefaultAnimation(int client, const char[] sAnimation)
 		SetVariantString(sAnimation);
 		AcceptEntityInput(g_iSuperViewModelRef[client], "SetDefaultAnimation");
 	}
+
+	return;
 }
 
 void ViewModel_SetPlaybackRate(int client, const float sPlaybackRate)
@@ -409,6 +413,11 @@ void ViewModel_SetPlaybackRate(int client, const float sPlaybackRate)
 
 void ViewModel_Destroy(int client)
 {
+	if (!IsValidClient(client))
+	{
+		return;
+	}
+	
 	if (IsValidEntity(g_iSuperViewModelRef[client]))
 		RemoveEntity(g_iSuperViewModelRef[client]);
 	
@@ -420,38 +429,14 @@ void ViewModel_Destroy(int client)
 	g_iSuperArmModelRef[client] = INVALID_ENT_REFERENCE;
 
 	SetEntProp(client, Prop_Send, "m_bDrawViewmodel", 1);
+
+	return;
 }
 
 public Action ViewModel_SetTransmit(int iViewModel, int iClient)
-{
+{	
 	int iOwner = GetEntPropEnt(iViewModel, Prop_Send, "m_hOwnerEntity");
 	if (!IsValidClient(iOwner) || !IsPlayerAlive(iOwner) || iViewModel != EntRefToEntIndex(g_iSuperViewModelRef[iOwner]))
-	{
-		//Viewmodel entity no longer valid
-		ViewModel_Destroy(iOwner);
-		return Plugin_Handled;
-	}
-	
-	//Allow if spectating owner and in firstperson
-	if (iClient != iOwner)
-	{
-		if (GetEntPropEnt(iClient, Prop_Send, "m_hObserverTarget") == iOwner && GetEntProp(iClient, Prop_Send, "m_iObserverMode") == OBS_MODE_IN_EYE)
-		    return Plugin_Continue;
-		
-		return Plugin_Handled;
-	}
-	
-	//Allow if client itself and in firstperson
-	if (TF2_IsPlayerInCondition(iClient, TFCond_Taunting) || GetEntProp(iClient, Prop_Send, "m_nForceTauntCam"))
-		return Plugin_Handled;
-	
-	return Plugin_Continue;
-}
-
-public Action HandModel_SetTransmit(int iHandModel, int iClient)
-{
-	int iOwner = GetEntPropEnt(iHandModel, Prop_Send, "m_hOwnerEntity");
-	if (!IsValidClient(iOwner) || !IsPlayerAlive(iOwner) || iHandModel != EntRefToEntIndex(g_iSuperArmModelRef[iOwner]))
 	{
 		//Viewmodel entity no longer valid
 		ViewModel_Destroy(iOwner);
@@ -631,12 +616,14 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 		return Plugin_Continue;
 	}
 	
-	if (!IsValidEntity(weapon)) {
+	int Weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+
+	if (!IsValidEntity(Weapon)) {
 		return Plugin_Continue;
 	}
 	
 	char attr[256];
-	if(TF2CustAttr_GetString(weapon, "vm superoverride anim", attr, sizeof(attr)) && IsValidEntity(g_iSuperViewModelRef[client]))
+	if(TF2CustAttr_GetString(Weapon, "vm superoverride anim", attr, sizeof(attr)) && IsValidEntity(g_iSuperViewModelRef[client]))
 	{
 		if(buttons & IN_ATTACK3)
 		{
