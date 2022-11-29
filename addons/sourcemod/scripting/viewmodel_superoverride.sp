@@ -74,6 +74,7 @@ enum PlayerAnimEvent_t
 };
 
 bool g_bIgnoreWeaponSwitch[MAXPLAYERS + 1];
+bool g_iIsCritAttack[MAXPLAYERS + 1];
 
 static int g_iSuperViewModelRef[MAXPLAYERS + 1] = {INVALID_ENT_REFERENCE, ...};
 static int g_iSuperArmModelRef[MAXPLAYERS + 1] = {INVALID_ENT_REFERENCE, ...};
@@ -186,8 +187,19 @@ public void Create_Viewmodel(int client)
 			&& FileExistsAndLog(svm, true)) {
 		// override viewmodel by attaching arm and weapon viewmodels
 		PrecacheModelAndLog(svm);
+
+		float superangleoffset[3] = {0.0, 0.0, 0.0};
+		float height = 0.0;
+		char attr[64];
+		if (TF2CustAttr_GetString(weapon, "viewmodel superoffset", attr, sizeof(attr)))
+		{
+			superangleoffset[0] = ReadFloatVar(attr, "x", 0.0);
+			superangleoffset[1] = ReadFloatVar(attr, "y", 0.0);
+			superangleoffset[2] = ReadFloatVar(attr, "z", 0.0);
+			height = ReadFloatVar(attr, "h", 0.0);
+		}
 		
-		ViewModel_Create(client, svm, _, _);
+		ViewModel_Create(client, svm, superangleoffset, height);
 
 		OriginalViewModel_Hide(client);
 	}
@@ -273,11 +285,11 @@ void ViewModel_Create(int iClient, const char[] sModel, const float vecAnglesOff
 				int meleeWeapon = GetPlayerWeaponSlot(iClient, TFWeaponSlot_Melee);
 				if (IsValidEntity(meleeWeapon)
 						&& TF2_GetItemDefinitionIndex(meleeWeapon) == TF_ITEM_DEFINDEX_GUNSLINGER) {
-					char cm[PLATFORM_MAX_PATH];
-					if(TF2CustAttr_GetString(meleeWeapon, "clientmodel override", cm, sizeof(cm)) && FileExistsAndLog(cm, true))
+					char armvmpath[PLATFORM_MAX_PATH];
+					if(TF2CustAttr_GetString(meleeWeapon, "arm model override", armvmpath, sizeof(armvmpath)) && FileExistsAndLog(armvmpath, true))
 					{
-						PrecacheModelAndLog(cm);
-						DispatchKeyValue(iHands, "model", cm);
+						PrecacheModelAndLog(armvmpath);
+						DispatchKeyValue(iHands, "model", armvmpath);
 					}
 					else
 					{
@@ -325,8 +337,8 @@ void ViewModel_Create(int iClient, const char[] sModel, const float vecAnglesOff
 		ReadStringVar(attr, "draw", Draw, sizeof(Draw), "draw");
 		ViewModel_SetAnimation(iClient, Draw);
 
-		float DrawPR = ReadFloatVar(attr, "drawPR", 1.0);
-		ViewModel_SetPlaybackRate(iClient, DrawPR);
+		float flPlayBackRate = GetEntPropFloat(iClient, Prop_Send, "m_flPlaybackRate");
+		ViewModel_SetPlaybackRate(iClient, flPlayBackRate);
 
 		HookSingleEntityOutput(iViewModel, "OnAnimationDone", OnAnimationDone, true);
 	}
@@ -360,12 +372,13 @@ int GetArmViewModel(int client, char[] buffer, int maxlen) {
 
 void OnAnimationDone(const char[] output, int caller, int activator, float delay)
 {
-	if(!IsValidEntity(activator))
+	if(!IsValidClient(activator))
 	{
 		return;
 	}
-	
-	ViewModel_SetPlaybackRate(activator, 1.0);
+
+	float flPlayBackRate = GetEntPropFloat(activator, Prop_Send, "m_flPlaybackRate");
+	ViewModel_SetPlaybackRate(activator, flPlayBackRate);
 }
 
 void OriginalViewModel_Hide(int client)
@@ -426,7 +439,7 @@ void ViewModel_Destroy(int client)
 	if (IsValidEntity(g_iSuperArmModelRef[client]))
 		RemoveEntity(g_iSuperArmModelRef[client]);
 	
-	g_iSuperArmModelRef[client] = INVALID_ENT_REFERENCE;
+	g_iSuperArmModelRef[client] = INVALID_ENT_REFERENCE; 
 
 	SetEntProp(client, Prop_Send, "m_bDrawViewmodel", 1);
 
@@ -521,6 +534,24 @@ public MRESReturn DHook_DoAnimationEventPre(int client, DHookParam param)
 	return MRES_Ignored;
 }
 
+public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponname, bool& result)
+{
+	char svm[PLATFORM_MAX_PATH];
+	if (TF2CustAttr_GetString(weapon, "viewmodel superoverride", svm, sizeof(svm)))
+	{
+		if(result)
+		{
+			g_iIsCritAttack[client] = true;
+		}
+		else
+		{
+			g_iIsCritAttack[client] = false;
+		}
+	}
+	
+	return Plugin_Continue;
+}
+
 public Action Weapon_OnAnimation(int client, PlayerAnimEvent_t &anim, int &data)
 {
 	int weapon = TF2_GetClientActiveWeapon(client);
@@ -533,12 +564,116 @@ public Action Weapon_OnAnimation(int client, PlayerAnimEvent_t &anim, int &data)
 	{
 		if(anim==PLAYERANIMEVENT_ATTACK_PRIMARY || anim==PLAYERANIMEVENT_ATTACK_PRIMARY_SUPER)
 		{
+			int shouldrandomanim = ReadIntVar(attr, "randomanim", 0);
 			char Fire[32];
-			ReadStringVar(attr, "fire", Fire, sizeof(Fire), "fire");
-			ViewModel_SetAnimation(client, Fire);
+			if (shouldrandomanim)
+			{
+				int randomanim = GetRandomInt(0, 2);
+				switch(randomanim)
+				{
+					case 0:
+					{
+						if(g_iIsCritAttack[client])
+						{
+							if(ReadStringVar(attr, "fire", Fire, sizeof(Fire)))
+							{
+								ViewModel_SetAnimation(client, Fire);
+							}
+							else
+							{
+								ViewModel_SetAnimation(client, "fire");
+							}
+						}
+						else
+						{
+							if(ReadStringVar(attr, "critfire", Fire, sizeof(Fire)))
+							{
+								ViewModel_SetAnimation(client, Fire);
+							}
+							else
+							{
+								ViewModel_SetAnimation(client, "fire");
+							}
+						}
+					}
+					case 1:
+					{
+						if(g_iIsCritAttack[client])
+						{
+							if(ReadStringVar(attr, "critfire1", Fire, sizeof(Fire)))
+							{
+								ViewModel_SetAnimation(client, Fire);
+							}
+							else if(ReadStringVar(attr, "critfire", Fire, sizeof(Fire)))
+							{
+								ViewModel_SetAnimation(client, Fire);
+							}
+							else
+							{
+								ViewModel_SetAnimation(client, "fire");
+							}
+						}
+						else
+						{
+							if(ReadStringVar(attr, "fire1", Fire, sizeof(Fire)))
+							{
+								ViewModel_SetAnimation(client, Fire);
+							}
+							else if(ReadStringVar(attr, "fire", Fire, sizeof(Fire)))
+							{
+								ViewModel_SetAnimation(client, Fire);
+							}
+							else
+							{
+								ViewModel_SetAnimation(client, "fire");
+							}
+						}
+					}
+					case 2:
+					{
+						if(g_iIsCritAttack[client])
+						{
+							if(ReadStringVar(attr, "critfire2", Fire, sizeof(Fire)))
+							{
+								ViewModel_SetAnimation(client, Fire);
+							}
+							else if(ReadStringVar(attr, "critfire", Fire, sizeof(Fire)))
+							{
+								ViewModel_SetAnimation(client, Fire);
+							}
+							else
+							{
+								ViewModel_SetAnimation(client, "fire");
+							}
+						}
+						else
+						{
+							if(ReadStringVar(attr, "fire2", Fire, sizeof(Fire)))
+							{
+								ViewModel_SetAnimation(client, Fire);
+							}
+							else if(ReadStringVar(attr, "fire", Fire, sizeof(Fire)))
+							{
+								ViewModel_SetAnimation(client, Fire);
+							}
+							else
+							{
+								ViewModel_SetAnimation(client, "fire");
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				if(ReadStringVar(attr, "fire", Fire, sizeof(Fire)))
+				{
+					ViewModel_SetAnimation(client, Fire);
+				}
+			}
 
-			float FirePR = ReadFloatVar(attr, "firePR", 1.0);
-			ViewModel_SetPlaybackRate(client, FirePR);
+			float flPlayBackRate = GetEntPropFloat(client, Prop_Send, "m_flPlaybackRate");
+			ViewModel_SetPlaybackRate(client, flPlayBackRate);
 
 			int iViewModel = EntRefToEntIndex(g_iSuperViewModelRef[client]);
 			HookSingleEntityOutput(iViewModel, "OnAnimationDone", OnAnimationDone, true);
@@ -549,8 +684,8 @@ public Action Weapon_OnAnimation(int client, PlayerAnimEvent_t &anim, int &data)
 			if(ReadStringVar(attr, "altfire", AltFire, sizeof(AltFire)))
 			{
 				ViewModel_SetAnimation(client, AltFire);
-				float AltFirePR = ReadFloatVar(attr, "altfirePR", 1.0);
-				ViewModel_SetPlaybackRate(client, AltFirePR);
+				float flPlayBackRate = GetEntPropFloat(client, Prop_Send, "m_flPlaybackRate");
+				ViewModel_SetPlaybackRate(client, flPlayBackRate);
 
 				int iViewModel = EntRefToEntIndex(g_iSuperViewModelRef[client]);
 				HookSingleEntityOutput(iViewModel, "OnAnimationDone", OnAnimationDone, true);
@@ -610,48 +745,69 @@ public Action Weapon_OnAnimation(int client, PlayerAnimEvent_t &anim, int &data)
 	return Plugin_Continue;
 }
 
-public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3], float angles[3], int& weapon)
-{
-	if (!IsValidClient(client)) {
-		return Plugin_Continue;
-	}
+// public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3], float angles[3], int& weapon)
+// {
+// 	if (!IsValidClient(client)) {
+// 		return Plugin_Continue;
+// 	}
 	
-	int Weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+// 	int Weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 
-	if (!IsValidEntity(Weapon)) {
-		return Plugin_Continue;
-	}
+// 	if (!IsValidEntity(Weapon)) {
+// 		return Plugin_Continue;
+// 	}
 	
-	char attr[256];
-	if(TF2CustAttr_GetString(Weapon, "vm superoverride anim", attr, sizeof(attr)) && IsValidEntity(g_iSuperViewModelRef[client]))
-	{
-		if(buttons & IN_ATTACK3)
-		{
-			char SpecialFire[32];
-			if(ReadStringVar(attr, "specialfire", SpecialFire, sizeof(SpecialFire)))
-			{
-				ViewModel_SetAnimation(client, SpecialFire);
-				float SpecialFirePR = ReadFloatVar(attr, "specialfirePR", 1.0);
-				ViewModel_SetPlaybackRate(client, SpecialFirePR);
+// 	char attr[256];
+// 	if(TF2CustAttr_GetString(Weapon, "vm superoverride anim", attr, sizeof(attr)) && IsValidEntity(g_iSuperViewModelRef[client]))
+// 	{
+// 		if(buttons & IN_ATTACK2)
+// 		{
+// 			int IsDeadRingerOut = GetEntData(client, FindSendPropInfo("CTFPlayer", "m_bFeignDeathReady"), 1);
+// 			if(IsDeadRingerOut)
+// 			{	
+// 			}
+// 			else
+// 			{
+// 			} 
+			
+// 			char SpecialFire[32];
+// 			if(ReadStringVar(attr, "specialfire", SpecialFire, sizeof(SpecialFire)))
+// 			{
+// 				ViewModel_SetAnimation(client, SpecialFire);
+// 				float SpecialFirePR = ReadFloatVar(attr, "specialfirePR", 1.0);
+// 				ViewModel_SetPlaybackRate(client, SpecialFirePR);
 
-				int iViewModel = EntRefToEntIndex(g_iSuperViewModelRef[client]);
-				HookSingleEntityOutput(iViewModel, "OnAnimationDone", OnAnimationDone, true);
-			}
-		}
-		else if(buttons & IN_RELOAD)
-		{
-			char ReloadButton[32];
-			if(ReadStringVar(attr, "reloadbutton", ReloadButton, sizeof(ReloadButton)))
-			{
-				ViewModel_SetAnimation(client, ReloadButton);
-				float ReloadButtonPR = ReadFloatVar(attr, "reloadbuttonPR", 1.0);
-				ViewModel_SetPlaybackRate(client, ReloadButtonPR);
+// 				int iViewModel = EntRefToEntIndex(g_iSuperViewModelRef[client]);
+// 				HookSingleEntityOutput(iViewModel, "OnAnimationDone", OnAnimationDone, true);
+// 			}
+// 		}
+// 		else if(buttons & IN_ATTACK3)
+// 		{
+// 			char SpecialFire[32];
+// 			if(ReadStringVar(attr, "specialfire", SpecialFire, sizeof(SpecialFire)))
+// 			{
+// 				ViewModel_SetAnimation(client, SpecialFire);
+// 				float SpecialFirePR = ReadFloatVar(attr, "specialfirePR", 1.0);
+// 				ViewModel_SetPlaybackRate(client, SpecialFirePR);
 
-				int iViewModel = EntRefToEntIndex(g_iSuperViewModelRef[client]);
-				HookSingleEntityOutput(iViewModel, "OnAnimationDone", OnAnimationDone, true);
-			}
-		}
-	}
+// 				int iViewModel = EntRefToEntIndex(g_iSuperViewModelRef[client]);
+// 				HookSingleEntityOutput(iViewModel, "OnAnimationDone", OnAnimationDone, true);
+// 			}
+// 		}
+// 		else if(buttons & IN_RELOAD)
+// 		{
+// 			char ReloadButton[32];
+// 			if(ReadStringVar(attr, "reloadbutton", ReloadButton, sizeof(ReloadButton)))
+// 			{
+// 				ViewModel_SetAnimation(client, ReloadButton);
+// 				float ReloadButtonPR = ReadFloatVar(attr, "reloadbuttonPR", 1.0);
+// 				ViewModel_SetPlaybackRate(client, ReloadButtonPR);
+
+// 				int iViewModel = EntRefToEntIndex(g_iSuperViewModelRef[client]);
+// 				HookSingleEntityOutput(iViewModel, "OnAnimationDone", OnAnimationDone, true);
+// 			}
+// 		}
+// 	}
 	
-	return Plugin_Continue;
-}
+// 	return Plugin_Continue;
+// }
