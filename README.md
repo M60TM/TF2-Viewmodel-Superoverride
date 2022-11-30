@@ -19,9 +19,11 @@ A list of custom attributes make for v_model support
 
 - `"viewmodel superoverride skin"   "2"`
 
+- `"viewmodel superoffset"   "x=-5.0 y=-12.0 z=3.0 h=-4.0"`
+
 - `"armmodel attachment"    "weapon_bone"`
 
-- `"vm superoverride anim"	"prifire=fire prifirePR=1.4 reload=reload"`
+- `"vm superoverride anim"	"fire=fire reload=reload"`
 
 ## Arguments:
 
@@ -31,6 +33,8 @@ A list of custom attributes make for v_model support
 
 - `"viewmodel superoverride skin"`: Attribute value is a any number. Use it when you need to set specific skin.
 
+- `"viewmodel superoffset"`: Attribute value is float vector. `x` is x axis angle(up-down), `y` is y axis angle(left-right), `z` is z axis angle(use it for spin). `h` is height of viewmodel.
+
 - `"armmodel attachment"`: Attribute value is a attachment name. Even if "armmodel superoverride" is not set, it must be set unconditionally.
 
-- `"vm superoverride anim"`: Available attribute value is `draw`, `idle`, `fire`(primary fire), `altfire`(alt fire), `specialfire`(special fire), `reloadbutton`(R), `reload`(reload or reload start), `reloadloop`, `reloadend`. And you can set their playbackrate by setting like `prifirePR=1.4`(default value is 1.0).
+- `"vm superoverride anim"`: Available attribute value is `draw`, `idle`, `fire`(primary fire), `altfire`(alt fire), `reload`(reload or reload start), `reloadloop`, `reloadend`. You can also set playbackrate by using like `reloadPR=1.4`. Fire and altfire animation playbackrate follow original weapon playbackrate. So don't set `firePR=1.2`..
